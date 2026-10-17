@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL CHECK (length(trim(name)) > 0),
   email TEXT NOT NULL COLLATE NOCASE UNIQUE
     CHECK (length(trim(email)) > 0 AND email = trim(email)),
   password_hash TEXT NOT NULL CHECK (length(trim(password_hash)) > 0),

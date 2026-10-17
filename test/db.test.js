@@ -14,7 +14,7 @@ test('task CRUD persists across database initialization', () => {
   try {
     connection = openDatabase(filename);
     const userId = connection.prepare(
-      'INSERT INTO users (email, password_hash) VALUES (?, ?)'
+      "INSERT INTO users (name, email, password_hash) VALUES ('Test User', ?, ?)"
     ).run('test@example.com', 'test-only-hash').lastInsertRowid;
     const taskId = connection.prepare(
       'INSERT INTO tasks (user_id, description, updated_at) VALUES (?, ?, ?)'
@@ -48,7 +48,10 @@ test('database rejects invalid user and task data', () => {
   const connection = openDatabase(':memory:');
   try {
     assert.equal(connection.pragma('foreign_keys', { simple: true }), 1);
-    const addUser = connection.prepare('INSERT INTO users (email, password_hash) VALUES (?, ?)');
+    const addUser = connection.prepare("INSERT INTO users (name, email, password_hash) VALUES ('Test User', ?, ?)");
+    const addNamedUser = connection.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)');
+    assert.throws(() => addNamedUser.run(null, 'name@example.com', 'hash'), { code: 'SQLITE_CONSTRAINT_NOTNULL' });
+    assert.throws(() => addNamedUser.run(' ', 'name@example.com', 'hash'), { code: 'SQLITE_CONSTRAINT_CHECK' });
     const userId = addUser.run('test@example.com', 'test-only-hash').lastInsertRowid;
     assert.throws(() => addUser.run('TEST@example.com', 'hash'), { code: 'SQLITE_CONSTRAINT_UNIQUE' });
     assert.throws(() => addUser.run(null, 'hash'), { code: 'SQLITE_CONSTRAINT_NOTNULL' });
