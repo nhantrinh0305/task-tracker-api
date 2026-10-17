@@ -117,7 +117,7 @@ Errors consistently use `{"error":{"code":"INVALID_CREDENTIALS","message":"Email
 | 500 | `INTERNAL_ERROR` | Unexpected server failure |
 
 Passwords use salted asynchronous scrypt (N=32768, r=8, p=3). JWTs use HS256
-through `jose`, with issuer and audience verification. The `session` cookie has
+through `jose`, with issuer and audience verification. The `jwt` cookie has
 HttpOnly, SameSite=Strict, Path=/, and Secure in production. POST routes also
 check Origin and reject cross-site Fetch Metadata requests. Responses are not cached.
 

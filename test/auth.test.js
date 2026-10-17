@@ -35,7 +35,7 @@ test('registration, login and authenticated identity over HTTP', async t => {
   const cookie = registered.headers.get('set-cookie');
   assert.match(cookie, /HttpOnly; SameSite=Strict; Path=\//);
   assert.ok(!cookie.includes('Secure'));
-  assert.equal(decodeJwt(cookie.split(';')[0].slice(8)).exp, undefined);
+  assert.equal(decodeJwt(cookie.split(';')[0].slice(4)).exp, undefined);
   const me = await fetch(url + '/api/auth/me', { headers: { cookie: cookie.split(';')[0] } });
   assert.deepEqual(await me.json(), { user });
   const login = await post('/api/auth/login', { email: 'TEST@example.com', password: credentials.password });
@@ -78,7 +78,7 @@ test('protected route rejects absent, tampered, wrong-algorithm and deleted-user
   const badAlgorithm = await new SignJWT({}).setProtectedHeader({ alg: 'HS384' })
     .setSubject('1').setIssuer('task-tracker-api').setAudience('task-tracker')
     .sign(new TextEncoder().encode(secret.repeat(2)));
-  for (const value of ['', 'session=garbage', session.replace('session=', 'session=x'), `session=${badAlgorithm}`]) {
+  for (const value of ['', 'jwt=garbage', session.replace('jwt=', 'jwt=x'), `jwt=${badAlgorithm}`]) {
     assert.equal((await fetch(url + '/api/auth/me', { headers: { cookie: value } })).status, 401);
   }
   db.prepare('DELETE FROM users').run();

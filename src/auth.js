@@ -28,11 +28,11 @@ export function createAuth(secret, secure = false) {
       const token = await new SignJWT({}).setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
         .setSubject(String(userId)).setIssuer('task-tracker-api').setAudience('task-tracker')
         .setIssuedAt().sign(key);
-      return `session=${token}; HttpOnly; SameSite=Strict; Path=/${secure ? '; Secure' : ''}`;
+      return `jwt=${token}; HttpOnly; SameSite=Strict; Path=/${secure ? '; Secure' : ''}`;
     },
     async authenticate(request, db) {
       const token = (request.headers.cookie || '').split(';').map(part => part.trim())
-        .find(part => part.startsWith('session='))?.slice(8);
+        .find(part => part.startsWith('jwt='))?.slice(4);
       if (!token) return null;
       try {
         const { payload } = await jwtVerify(token, key, {
