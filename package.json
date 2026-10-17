@@ -1,0 +1,15 @@
+{
+  "name": "task-tracker-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local task tracker with registration, login, and SQLite storage",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "db:init": "node --input-type=module -e \"import db from './src/db.js'; db.close(); console.log('Database initialized');\"",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3"
+  }
+}
