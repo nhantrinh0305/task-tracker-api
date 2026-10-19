@@ -86,3 +86,28 @@ test('protected route rejects absent, tampered, wrong-algorithm and deleted-user
   assert.throws(() => createApp({ db, secret: 'short' }), /JWT_SECRET/);
 });
 
+
+test('frontend assets are served safely and logout clears the session cookie', async t => {
+  const { url, post } = await setup(t);
+  for (const [path, type] of [['/', 'text/html'], ['/app.js', 'text/javascript'], ['/style.css', 'text/css']]) {
+    const response = await fetch(url + path);
+    assert.equal(response.status, 200);
+    assert.ok(response.headers.get('content-type').startsWith(type));
+    assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  }
+  for (const path of ['/src/server.js', '/data/task-tracker.db', '/package.json']) {
+    assert.equal((await fetch(url + path)).status, 404);
+  }
+  const head = await fetch(url + '/', { method: 'HEAD' });
+  assert.equal(head.status, 200);
+  assert.equal(await head.text(), '');
+  const registered = await post('/api/auth/register', credentials);
+  const cookie = registered.headers.get('set-cookie').split(';')[0];
+  assert.equal((await fetch(url + '/api/auth/me', { headers: { cookie } })).status, 200);
+  assert.equal((await post('/api/auth/logout', {}, { Origin: 'https://evil.example', cookie })).status, 403);
+  const logout = await post('/api/auth/logout', {}, { cookie });
+  assert.equal(logout.status, 204);
+  assert.equal(await logout.text(), '');
+  assert.match(logout.headers.get('set-cookie'), /^jwt=; Max-Age=0; HttpOnly; SameSite=Strict; Path=\//);
+  assert.equal((await fetch(url + '/api/auth/me', { headers: { cookie: 'jwt=' } })).status, 401);
+});

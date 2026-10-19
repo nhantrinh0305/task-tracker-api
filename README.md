@@ -1,14 +1,22 @@
 # Task tracker API
 
+## Web interface
+
+Run the API using the setup below, then open http://localhost:3000 in your browser.
+The approved dark interface is served by the API itself. Register or sign in to
+create, edit, delete, and page through your own tasks. Tasks persist in SQLite;
+the browser restores your session on reload. Forms display validation and network
+errors and prevent duplicate submissions while a request is in progress.
+
 Local task tracker using Node.js ES modules and SQLite through `better-sqlite3`.
 
 ## Project progress
 
 - **Complete:** Persistent SQLite storage, HTTP server, registration/login,
   password hashing, JWT cookies, authenticated user lookup, and authenticated task CRUD with pagination.
-- **Next:** Design and connect the frontend.
+- **Complete:** Responsive dark UI connected to authentication and task CRUD.
 - **Current boundary:** Authentication and task routes are implemented and tested locally.
-  Frontend integration is still unimplemented.
+  The frontend is integrated with the local API.
 
 ## Database setup
 
@@ -125,8 +133,7 @@ a browser-session cookie, but a copied JWT has no expiry. Rate limiting and
 account recovery are also not implemented; this is currently a local application.
 
 `npm test` runs real local HTTP requests against isolated in-memory databases,
-plus storage persistence and constraint tests. Frontend browser integration is
-deferred until the frontend is built.
+plus storage persistence and constraint tests. The frontend has also been checked in a browser against an isolated in-memory database.
 
 
 ## Task API contract
@@ -168,3 +175,5 @@ Task responses are not cached. Tests cover CRUD, full/partial PUT, pagination,
 validation, authentication, and isolation between users.
 
 
+
+POST /api/auth/logout returns 204 and clears the current browser cookie; it does not revoke copied JWTs. Token expiration and revocation remain deferred.

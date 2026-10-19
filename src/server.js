@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
+import { readFile } from 'node:fs/promises';
 import { createAuth } from './auth.js';
 import { handleUserRoute, HttpError } from './user-routes.js';
 import { handleTaskRoute } from './todo-routes.js';
@@ -39,6 +40,23 @@ export function createApp({ db, secret, secure = false, origin = 'http://localho
     try {
       const url = new URL(request.url, allowedOrigin);
       const path = url.pathname;
+      const assets = { '/': ['index.html', 'text/html'], '/index.html': ['index.html', 'text/html'],
+        '/app.js': ['app.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
+      if (['GET', 'HEAD'].includes(request.method) && Object.hasOwn(assets, path)) {
+        const [file, type] = assets[path];
+        const content = await readFile(new URL('../public/' + file, import.meta.url));
+        response.writeHead(200, { 'Content-Type': type + '; charset=utf-8', 'Cache-Control': 'no-store',
+          'X-Content-Type-Options': 'nosniff' });
+        return response.end(request.method === 'HEAD' ? undefined : content);
+      }
+      if (request.method === 'POST' && path === '/api/auth/logout') {
+        if ((request.headers.origin && request.headers.origin !== allowedOrigin) ||
+            request.headers['sec-fetch-site'] === 'cross-site') {
+          throw new HttpError(403, 'FORBIDDEN_ORIGIN', 'Request origin is not allowed.');
+        }
+        return send(response, 204, undefined, { 'Set-Cookie':
+          `jwt=; Max-Age=0; HttpOnly; SameSite=Strict; Path=/${secure ? '; Secure' : ''}` });
+      }
       const taskRoute = (path === '/api/tasks' && ['GET', 'POST'].includes(request.method)) ||
         (/^\/api\/tasks\/[^/]+$/.test(path) && ['PUT', 'DELETE'].includes(request.method));
       if (taskRoute) {
