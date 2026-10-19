@@ -5,11 +5,10 @@ Local task tracker using Node.js ES modules and SQLite through `better-sqlite3`.
 ## Project progress
 
 - **Complete:** Persistent SQLite storage, HTTP server, registration/login,
-  password hashing, JWT cookies, and authenticated user lookup.
-- **Next:** Implement authenticated task CRUD routes, then design and connect
-  the frontend.
-- **Current boundary:** Authentication is implemented and tested locally.
-  Task routes and frontend integration are still unimplemented.
+  password hashing, JWT cookies, authenticated user lookup, and authenticated task CRUD with pagination.
+- **Next:** Design and connect the frontend.
+- **Current boundary:** Authentication and task routes are implemented and tested locally.
+  Frontend integration is still unimplemented.
 
 ## Database setup
 
@@ -128,3 +127,44 @@ account recovery are also not implemented; this is currently a local application
 `npm test` runs real local HTTP requests against isolated in-memory databases,
 plus storage persistence and constraint tests. Frontend browser integration is
 deferred until the frontend is built.
+
+
+## Task API contract
+
+All task routes require the session cookie. Missing or invalid authentication returns
+`401 UNAUTHENTICATED`. Every operation is restricted to the signed-in user's tasks.
+
+| Method | Path | JSON input | Success |
+| --- | --- | --- | --- |
+| GET | `/api/tasks?page=1` | None | 200, tasks and pagination |
+| POST | `/api/tasks` | `description`, optional `status` | 201, `{ "task": ... }` |
+| PUT | `/api/tasks/:id` | `description`, `status`, or both | 200, `{ "task": ... }` |
+| DELETE | `/api/tasks/:id` | None | 204, empty response body |
+
+GET returns all stored task fields: `id`, `user_id`, `description`, `status`,
+`created_at`, and `updated_at`. Tasks are ordered by ID descending (newest first),
+with exactly 10 tasks per page at most. `page` defaults to 1 and must be a positive
+safe integer whose calculated offset is also safe; repeated page parameters are
+rejected. Pages beyond the last page return an empty tasks array.
+
+```json
+{"tasks":[],"pagination":{"page":1,"pageSize":10,"total":0,"totalPages":0}}
+```
+
+Description is trimmed and must be a nonblank string without null characters.
+Status must be `to-do`, `in-progress`, or `done`; creation defaults to `to-do`
+when status is omitted. PUT supports full and partial changes: omitted fields
+remain unchanged, and at least one editable field is required. Other fields,
+including `user_id`, are rejected. Ownership is always taken from the session.
+
+Task IDs must be positive safe integers. Invalid fields, IDs, or pagination return
+`400 INVALID_INPUT`. Missing tasks and tasks owned by another user both return
+`404 NOT_FOUND`. PATCH is not supported.
+
+POST and PUT require a JSON object with `Content-Type: application/json` and a
+16 KiB body limit, using the same errors as authentication routes. POST, PUT, and
+DELETE enforce the configured Origin and reject cross-site Fetch Metadata requests.
+Task responses are not cached. Tests cover CRUD, full/partial PUT, pagination,
+validation, authentication, and isolation between users.
+
+

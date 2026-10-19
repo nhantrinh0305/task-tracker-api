@@ -2,13 +2,14 @@ import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { createAuth } from './auth.js';
 import { handleUserRoute, HttpError } from './user-routes.js';
+import { handleTaskRoute } from './todo-routes.js';
 
 function send(response, status, body, headers = {}) {
   response.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff', ...headers,
   });
-  response.end(JSON.stringify(body));
+  response.end(status === 204 ? undefined : JSON.stringify(body));
 }
 
 async function readJson(request) {
@@ -36,7 +37,22 @@ export function createApp({ db, secret, secure = false, origin = 'http://localho
   const allowedOrigin = new URL(origin).origin;
   return createServer(async (request, response) => {
     try {
-      const path = new URL(request.url, allowedOrigin).pathname;
+      const url = new URL(request.url, allowedOrigin);
+      const path = url.pathname;
+      const taskRoute = (path === '/api/tasks' && ['GET', 'POST'].includes(request.method)) ||
+        (/^\/api\/tasks\/[^/]+$/.test(path) && ['PUT', 'DELETE'].includes(request.method));
+      if (taskRoute) {
+        const user = await auth.authenticate(request, db);
+        if (!user) throw new HttpError(401, 'UNAUTHENTICATED', 'Sign in to continue.');
+        if (request.method !== 'GET' &&
+            ((request.headers.origin && request.headers.origin !== allowedOrigin) ||
+              request.headers['sec-fetch-site'] === 'cross-site')) {
+          throw new HttpError(403, 'FORBIDDEN_ORIGIN', 'Request origin is not allowed.');
+        }
+        const body = ['POST', 'PUT'].includes(request.method) ? await readJson(request) : undefined;
+        const result = handleTaskRoute(request.method, url, body, db, user.id);
+        return send(response, result.status, result.body);
+      }
       if (request.method === 'GET' && path === '/api/auth/me') {
         const user = await auth.authenticate(request, db);
         if (!user) throw new HttpError(401, 'UNAUTHENTICATED', 'Sign in to continue.');
